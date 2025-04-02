@@ -294,7 +294,7 @@ const CustomerList = () => {
 
       {/* Modal for Adding/Editing Customer */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center ">
           <div className="bg-white rounded-lg w-full max-w-md md:max-w-lg max-h-[90vh] overflow-hidden">
             {/* Modal Header */}
             <div className="flex justify-between items-center border-b p-4">

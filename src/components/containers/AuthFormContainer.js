@@ -86,7 +86,7 @@ const AuthFormContainer = () => {
   return (
     <div className="flex items-center justify-center ">
       <Card
-        className="w-[50vw] h-auto max-w-md bg-white flex justify-center flex-col rounded-xl border border-white/10 p-8 space-y-6 transition-all duration-500 ease-in-out"
+        className="w-full md:w-[50vw] h-auto  sm:max-w-md bg-white flex justify-center flex-col rounded-xl border border-white/10 p-8 space-y-6 transition-all duration-500 ease-in-out"
       >
         <CardHeader>
           <CardTitle className="text-center">{isReset ? 'Reset Password' : 'Business/Agency Login'}</CardTitle>
@@ -101,7 +101,7 @@ const AuthFormContainer = () => {
               setEmail(e.target.value);
               setIsEmailValid(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.target.value));
             }}
-            className="w-full mb-3 focus:outline-none focus:ring-2 focus:ring-[#57b092] focus:border-[#57b092]"
+            className="w-full mb-3 text-black focus:outline-none focus:ring-2 focus:ring-[#57b092] focus:border-[#57b092]"
             required
           />
 
