@@ -1,6 +1,7 @@
-'use client'
-import { useState } from 'react';
 
+'use client'
+import { useState, useEffect } from 'react';
+import axios from 'axios';
 import { 
   Plus,
   Search,
@@ -9,100 +10,145 @@ import {
   Image,
   FileText,
   Video,
-  Eye
+  Eye,
+  Loader
 } from 'lucide-react';
 
 const TemplateList = () => {
-  const [templates, setTemplates] = useState([
-    {
-      id: 1,
-      title: 'Welcome Message',
-      type: 'text',
-      status: 'Active',
-      language: 'English',
-      lastModified: '2025-03-17'
-    },
-    {
-      id: 2,
-      title: 'Promotional Offer',
-      type: 'media',
-      status: 'Active',
-      language: 'English',
-      lastModified: '2025-03-16'
-    },
-    {
-      id: 3,
-      title: 'Order Confirmation',
-      type: 'text',
-      status: 'Inactive',
-      language: 'Spanish',
-      lastModified: '2025-03-15'
-    }
-  ]);
-  const [showModal, setShowModal] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [metaTemplates, setMetaTemplates] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
     status: 'all',
     type: 'all',
     language: 'all'
   });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [languages, setLanguages] = useState([]);
 
-  const handleAddTemplate = (newTemplate) => {
-    setTemplates([...templates, { ...newTemplate, id: templates.length + 1 }]);
-    setShowModal(false);
-  };
+  useEffect(() => {
+    const fetchMetaTemplates = async () => {
+      setLoading(true);
+      try {
+        const response = await axios.get('https://graph.facebook.com/v18.0/619408917542721/message_templates', {
+          headers: {
+            Authorization: 'Bearer EAA4YU5sRk5QBO86fFZA0M6RMu7Mw35eAlm4PtxlO2haED4icRyyEneUeYsLF3FZCqveHYRRZBTN08DV4zeSZB5RrPmYs5ZA3ZCzCxBuQEDM5lKFPOAzpyE2uuZA82hGVGsOzRxJapMVSfmYQeiJ0T2lNGVwxNdDbINgHpCZBk2HgGxYCY5nRwIBiXTQXaPdE9JTor3sVmQrEj8TpP3CuM9ZBqfKz0KKtlfffe44JHxeya'
+          }
+        });
+        
+        const templatesData = response.data.data;
+        setMetaTemplates(templatesData);
+        
+        // Extract unique languages for filter dropdown
+        const uniqueLanguages = [...new Set(templatesData.map(template => template.language))];
+        setLanguages(uniqueLanguages);
+        
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching Meta templates:', error);
+        setError('Failed to load templates. Please try again later.');
+        setLoading(false);
+      }
+    };
 
-  const handleEditTemplate = (updatedTemplate) => {
-    setTemplates(templates.map(template => 
-      template.id === updatedTemplate.id ? updatedTemplate : template
-    ));
-    setShowModal(false);
-    setSelectedTemplate(null);
-  };
+    fetchMetaTemplates();
+  }, []);
 
-  const handleDeleteTemplate = (templateId) => {
-    setTemplates(templates.filter(template => template.id !== templateId));
-  };
-
-  const filteredTemplates = templates.filter(template => {
-    const matchesSearch = template.title.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filters.status === 'all' || template.status === filters.status;
-    const matchesType = filters.type === 'all' || template.type === filters.type;
-    const matchesLanguage = filters.language === 'all' || template.language === filters.language;
+  // Filter templates based on search term and filters
+  const filteredTemplates = metaTemplates.filter(template => {
+    const matchesSearch = template.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = filters.status === 'all' || template.status.toLowerCase() === filters.status.toLowerCase();
+    
+    // Handle type filtering based on component type
+    const matchesType = filters.type === 'all' || 
+      (template.components && template.components.some(component => 
+        component.type && component.type.toLowerCase() === filters.type.toLowerCase()
+      ));
+    
+    const matchesLanguage = filters.language === 'all' || 
+      (template.language && template.language.toLowerCase() === filters.language.toLowerCase());
     
     return matchesSearch && matchesStatus && matchesType && matchesLanguage;
   });
 
-  const getTemplateTypeIcon = (type) => {
-    switch (type) {
-      case 'text':
-        return <FileText size={18} />;
-      case 'media':
-        return <Image size={18} />;
-      case 'video':
-        return <Video size={18} />;
+  const getTemplateTypeIcon = (template) => {
+    if (!template.components || template.components.length === 0) {
+      return <FileText size={18} />;
+    }
+
+    // Check component types
+    const hasMedia = template.components.some(comp => comp.type === 'MEDIA');
+    const hasVideo = template.components.some(comp => 
+      comp.type === 'MEDIA' && comp.parameters && 
+      comp.parameters.some(param => param.type === 'VIDEO')
+    );
+    const hasImage = template.components.some(comp => 
+      comp.type === 'MEDIA' && comp.parameters && 
+      comp.parameters.some(param => param.type === 'IMAGE')
+    );
+
+    if (hasVideo) return <Video size={18} />;
+    if (hasImage || hasMedia) return <Image size={18} />;
+    return <FileText size={18} />;
+  };
+
+  const getStatusClass = (status) => {
+    switch(status?.toLowerCase()) {
+      case 'approved':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'rejected':
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
       default:
-        return <FileText size={18} />;
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
     }
   };
 
-  return (
-   
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-semibold">Message Templates</h1>
-          <button
-            onClick={() => setShowModal(true)}
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            <Plus size={20} className="mr-2" />
-            Create Template
-          </button>
-        </div>
+  const handleTemplateClick = (template) => {
+    setSelectedTemplate(selectedTemplate?.id === template.id ? null : template);
+  };
 
-        {/* Search and Filters */}
+  const clearFilters = () => {
+    setSearchTerm('');
+    setFilters({
+      status: 'all',
+      type: 'all',
+      language: 'all'
+    });
+  };
+
+  const getTemplatePreview = (template) => {
+    if (!template.components || template.components.length === 0) return 'No preview available';
+    
+    // Find a text component
+    const textComponent = template.components.find(comp => 
+      comp.type === 'BODY' || (comp.text && comp.text.length > 0)
+    );
+    
+    if (textComponent && textComponent.text) {
+      return textComponent.text.length > 50 
+        ? `${textComponent.text.substring(0, 50)}...` 
+        : textComponent.text;
+    }
+    
+    return 'No text preview available';
+  };
+
+  return (
+    <div className="space-y-6 p-4">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-semibold">Message Templates</h1>
+        <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+          <Plus size={18} />
+          <span>New Template</span>
+        </button>
+      </div>
+
+      {/* Search and Filters */}
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="lg:col-span-2 relative">
             <input
@@ -110,245 +156,124 @@ const TemplateList = () => {
               placeholder="Search templates..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-lg border "
+              className="w-full pl-10 pr-4 py-2 rounded-lg border dark:border-gray-700 dark:bg-gray-800"
             />
             <Search className="absolute left-3 top-2.5 text-gray-400" size={20} />
           </div>
           <select
             value={filters.status}
             onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-            className="px-3 py-2 rounded-lg border "
+            className="px-3 py-2 rounded-lg border dark:border-gray-700 dark:bg-gray-800"
           >
             <option value="all">All Status</option>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
+            <option value="APPROVED">Approved</option>
+            <option value="PENDING">Pending</option>
+            <option value="REJECTED">Rejected</option>
           </select>
           <select
             value={filters.type}
             onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-            className="px-3 py-2 rounded-lg border "
+            className="px-3 py-2 rounded-lg border dark:border-gray-700 dark:bg-gray-800"
           >
             <option value="all">All Types</option>
-            <option value="text">Text</option>
-            <option value="media">Media</option>
-            <option value="video">Video</option>
+            <option value="HEADER">Header</option>
+            <option value="BODY">Body</option>
+            <option value="FOOTER">Footer</option>
+            <option value="BUTTONS">Buttons</option>
+            <option value="MEDIA">Media</option>
           </select>
           <select
             value={filters.language}
             onChange={(e) => setFilters({ ...filters, language: e.target.value })}
-            className="px-3 py-2 rounded-lg border "
+            className="px-3 py-2 rounded-lg border dark:border-gray-700 dark:bg-gray-800"
           >
             <option value="all">All Languages</option>
-            <option value="English">English</option>
-            <option value="Spanish">Spanish</option>
+            {languages.map(lang => (
+              <option key={lang} value={lang}>{lang}</option>
+            ))}
           </select>
         </div>
-
-        {/* Templates Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredTemplates.map((template) => (
-            <div
-              key={template.id}
-              className="bg-white  rounded-lg shadow-sm p-6 space-y-4"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  {getTemplateTypeIcon(template.type)}
-                  <h3 className="font-medium">{template.title}</h3>
-                </div>
-                <span className={`px-2 py-1 text-xs rounded-full ${
-                  template.status === 'Active'
-                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                    : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                }`}>
-                  {template.status}
-                </span>
-              </div>
-              
-              <div className="text-sm text-gray-500 dark:text-gray-400">
-                <p>Language: {template.language}</p>
-                <p>Last Modified: {template.lastModified}</p>
-              </div>
-
-              <div className="flex justify-between items-center pt-4 border-t dark:border-gray-700">
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => setSelectedTemplate(template)}
-                    className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 rounded-lg"
-                  >
-                    <Edit size={18} />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteTemplate(template.id)}
-                    className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900 rounded-lg"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-                <button
-                  className="flex items-center text-sm text-blue-600 hover:text-blue-700"
-                >
-                  <Eye size={18} className="mr-1" />
-                  Preview
-                </button>
-              </div>
-            </div>
-          ))}
+        
+        <div className="mt-4 flex justify-between items-center">
+          <button 
+            onClick={clearFilters}
+            className="text-blue-600 hover:text-blue-800 text-sm"
+          >
+            Clear Filters
+          </button>
+          <span className="text-sm text-gray-500">
+            {filteredTemplates.length} template{filteredTemplates.length !== 1 ? 's' : ''} found
+          </span>
         </div>
+      </div>
 
-        {/* Add/Edit Template Modal */}
-        {showModal && (
-          <div className="fixed inset-0 flex items-center justify-center">
-            <div className="bg-white  rounded-lg p-6 w-full max-w-2xl">
-              <h2 className="text-xl font-semibold mb-4">
-                {selectedTemplate ? 'Edit Template' : 'Create New Template'}
-              </h2>
-              <TemplateForm
-                template={selectedTemplate}
-                onSubmit={selectedTemplate ? handleEditTemplate : handleAddTemplate}
-                onCancel={() => {
-                  setShowModal(false);
-                  setSelectedTemplate(null);
-                }}
-              />
-            </div>
+      {/* Templates */}
+      <div className="mb-8">
+        <h2 className="text-xl font-semibold mb-4">Available Templates</h2>
+        
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <Loader className="animate-spin" size={32} />
+            <span className="ml-2">Loading templates...</span>
+          </div>
+        ) : error ? (
+          <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg text-center">
+            {error}
+          </div>
+        ) : filteredTemplates.length === 0 ? (
+          <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-6 rounded-lg text-center">
+            <p className="text-gray-500 dark:text-gray-400">No templates found matching your criteria</p>
+            <button 
+              onClick={clearFilters}
+              className="mt-2 text-blue-600 hover:underline"
+            >
+              Clear filters
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredTemplates.map((template) => (
+              <div
+                key={template.id}
+                className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 space-y-3 cursor-pointer transition-all hover:shadow-md ${selectedTemplate?.id === template.id ? 'ring-2 ring-blue-500' : ''}`}
+                onClick={() => handleTemplateClick(template)}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    {getTemplateTypeIcon(template)}
+                    <h3 className="font-medium text-lg ml-2">{template.name}</h3>
+                  </div>
+                  <span className={`px-2 py-1 text-xs rounded-full ${getStatusClass(template.status)}`}>
+                    {template.status || 'Unknown'}
+                  </span>
+                </div>
+                <div className="text-sm text-gray-500 dark:text-gray-400 space-y-2">
+                  <p>Language: {template.language || 'N/A'}</p>
+                  <p className="truncate">Preview: {getTemplatePreview(template)}</p>
+                  <p>Category: {template.category || 'N/A'}</p>
+                </div>
+                
+                {selectedTemplate?.id === template.id && (
+                  <div className="pt-3 border-t border-gray-100 dark:border-gray-700 mt-3 flex justify-between">
+                    <div className="flex space-x-2">
+                      <button className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-gray-700 rounded-full">
+                        <Edit size={16} />
+                      </button>
+                      <button className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-gray-700 rounded-full">
+                        <Eye size={16} />
+                      </button>
+                    </div>
+                    <button className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-gray-700 rounded-full">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         )}
       </div>
-   
-  );
-};
-
-const TemplateForm = ({ template, onSubmit, onCancel }) => {
-  const [formData, setFormData] = useState({
-    title: template?.title || '',
-    type: template?.type || 'text',
-    status: template?.status || 'Active',
-    language: template?.language || 'English',
-    content: template?.content || '',
-    media: template?.media || null
-  });
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSubmit({
-      ...template,
-      ...formData,
-      lastModified: new Date().toISOString().split('T')[0]
-    });
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700  mb-1">
-          Template Title
-        </label>
-        <input
-          type="text"
-          value={formData.title}
-          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-          className="w-full px-3 py-2 border rounded-lg "
-          required
-        />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700  mb-1">
-            Type
-          </label>
-          <select
-            value={formData.type}
-            onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-            className="w-full px-3 py-2 border rounded-lg "
-          >
-            <option value="text">Text</option>
-            <option value="media">Media</option>
-            <option value="video">Video</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700  mb-1">
-            Status
-          </label>
-          <select
-            value={formData.status}
-            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-            className="w-full px-3 py-2 border rounded-lg "
-          >
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Language
-          </label>
-          <select
-            value={formData.language}
-            onChange={(e) => setFormData({ ...formData, language: e.target.value })}
-            className="w-full px-3 py-2 border rounded-lg "
-          >
-            <option value="English">English</option>
-            <option value="Spanish">Spanish</option>
-          </select>
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700  mb-1">
-          Content
-        </label>
-        <textarea
-          value={formData.content}
-          onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-          rows={6}
-          className="w-full px-3 py-2 border rounded-lg "
-          required
-        />
-      </div>
-
-      {formData.type !== 'text' && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Media
-          </label>
-          <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-lg dark:border-gray-700">
-            <div className="space-y-1 text-center">
-              <div className="flex text-sm text-gray-600 dark:text-gray-400">
-                <label className="relative cursor-pointer rounded-md font-medium text-blue-600 hover:text-blue-500">
-                  <span>Upload a file</span>
-                  <input type="file" className="sr-only" />
-                </label>
-                <p className="pl-1">or drag and drop</p>
-              </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                PNG, JPG, GIF up to 10MB
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="flex justify-end space-x-2 pt-4">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-4 py-2 text-gray-600 dark:text-gray-400"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-        >
-          {template ? 'Update' : 'Create'} Template
-        </button>
-      </div>
-    </form>
+    </div>
   );
 };
 

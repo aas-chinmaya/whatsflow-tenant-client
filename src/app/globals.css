@@ -84,7 +84,7 @@
 }
 
 body {
-  color: var(--background);
-  background : var(--foreground);
+  color: var(--foreground);
+  background : var(--background);
   font-family: 'Helvetica', 'NeueMachina', sans-serif;
 }
