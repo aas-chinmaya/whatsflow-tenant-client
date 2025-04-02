@@ -43,7 +43,7 @@ const menuItems = [
   { icon: Users, label: 'Agent Management', href: '/agents' },
   { icon: ShoppingCart, label: 'Billing & Subscription', href: '/subscription' },
   { icon: Code, label: 'API Integration', href: '/integration' },
-  { icon: Settings, label: 'Settings & Profile', href: '/settings' },
+  { icon: Settings, label: 'Settings', href: '/settings' },
   { icon: Settings, label: 'Test', href: '/test' },
 ];
 

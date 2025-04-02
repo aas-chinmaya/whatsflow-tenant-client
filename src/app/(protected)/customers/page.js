@@ -1,11 +1,12 @@
-import CustomerList from '@/components/customer/customerList'
+import CustomerContainer from '@/components/containers/CustomerContainer'
+
 
 import React from 'react'
 
 const CustomerPage = () => {
   return (
 
-      <CustomerList/>
+      <CustomerContainer/>
    
   )
 }
