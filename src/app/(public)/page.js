@@ -97,18 +97,28 @@ const SaasLandingPage = () => {
     //   );
     // }
 
+    // if (partnersRef.current) {
+    //   gsap.to(partnersRef.current, {
+    //     x: "-50%", // Move it to left by 50% of its width
+    //     duration: 10, // Adjust speed
+    //     ease: "linear",
+    //     repeat: -1, // Infinite loop
+    //     modifiers: {
+    //       x: (x) => `${parseFloat(x) % 100}%`, // Ensures a seamless loop
+    //     },
+    //   });
+    // }
     if (partnersRef.current) {
       gsap.to(partnersRef.current, {
-        x: "-50%", // Move it to left by 50% of its width
+        x: "-50%", // Moves left continuously
         duration: 10, // Adjust speed
         ease: "linear",
         repeat: -1, // Infinite loop
         modifiers: {
-          x: (x) => `${parseFloat(x) % 100}%`, // Ensures a seamless loop
+          x: (x) => `${parseFloat(x) % 100}%`, // Ensures seamless looping
         },
       });
     }
-
     // Services section animations
     if (servicesRef.current) {
       const cards = servicesRef.current.querySelectorAll(".service-card");
@@ -426,12 +436,12 @@ const SaasLandingPage = () => {
         {[...partners, ...partners].map((partner, index) => (
           <div
             key={index}
-            className="partner-logo flex items-center justify-center opacity-60 hover:opacity-100 transition-all"
+            className="partner-logo flex items-center justify-center  transition-all"
           >
             <img
               src={partner.logo}
               alt={partner.name}
-              className="h-16   w-auto object-contain"
+              className="w-50 h-20 object-contain"
             />
           </div>
         ))}
