@@ -28,7 +28,7 @@ const mockLogin = async (credentials) => {
   throw new Error('Invalid credentials');
 };
 
-const AuthFormContainer = () => {
+const AuthFormContainer = ({ isModalOpen, setIsModalOpen }) => {
   const dispatch = useDispatch();
   const router = useRouter();
   const { loading, error } = useSelector((state) => state.auth);
@@ -86,7 +86,7 @@ const AuthFormContainer = () => {
   return (
     <div className="flex items-center justify-center ">
       <Card
-        className="w-full md:w-[50vw] h-auto  sm:max-w-md bg-white flex justify-center flex-col rounded-xl border border-white/10 p-8 space-y-6 transition-all duration-500 ease-in-out"
+        className="w-full md:w-[50vw] h-auto bg-[#000001] text-white sm:max-w-md  flex justify-center flex-col rounded-xl border border-white/10 p-8 space-y-6 transition-all duration-500 ease-in-out"
       >
         <CardHeader>
           <CardTitle className="text-center text-black">{isReset ? 'Reset Password' : 'Business/Agency Login'}</CardTitle>
@@ -101,7 +101,7 @@ const AuthFormContainer = () => {
               setEmail(e.target.value);
               setIsEmailValid(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.target.value));
             }}
-            className="w-full mb-3 text-black focus:outline-none focus:ring-2 focus:ring-[#57b092] focus:border-[#57b092]"
+            className="w-full mb-3 text-white focus:outline-none focus:ring-2 focus:ring-[#57b092] focus:border-[#57b092]"
             required
           />
 
@@ -112,12 +112,12 @@ const AuthFormContainer = () => {
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full mb-3 text-black focus:outline-none focus:ring-2 focus:ring-[#57b092] focus:border-[#57b092]"
+                className="w-full mb-3 text-white focus:outline-none focus:ring-2 focus:ring-[#57b092] focus:border-[#57b092]"
                 required
               />
               <button
                 type="button"
-                className="absolute top-1/2 right-3 transform -translate-y-1/2"
+                className="absolute top-1/3 right-3 transform -translate-y-1/2 cursor-pointer"
                 onClick={() => setShowPassword(!showPassword)}
               >
                 {showPassword ? <EyeOff /> : <Eye />}
@@ -158,3 +158,8 @@ const AuthFormContainer = () => {
 };
 
 export default AuthFormContainer;
+
+
+
+
+

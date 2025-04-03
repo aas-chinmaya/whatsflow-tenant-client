@@ -1,5 +1,5 @@
 const Card = ({ children, className = "" }) => {
-    return <div className={`border shadow-md rounded-lg p-6 bg-white ${className}`}>{children}</div>;
+    return <div className={`border shadow-md rounded-lg p-6  ${className}`}>{children}</div>;
   };
   
   const CardHeader = ({ children }) => <div className="mb-4">{children}</div>;
