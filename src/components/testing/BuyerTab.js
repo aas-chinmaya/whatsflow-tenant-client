@@ -460,7 +460,7 @@ export default function BuyerTab() {
   
     try {
       const response = await axios.post(
-        "http://192.168.0.109:3001/api/send-order-message",
+        "http://192.168.0.123:8000/api/send-order-message",
         orderPayload
       );
   

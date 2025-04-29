@@ -1,8 +1,6 @@
 // CampaignDashboard.jsx
 "use client"
-import React, { useState,useEffect  } from 'react';
-
-import { useDispatch,useSelector  } from 'react-redux';
+import React, { useState } from 'react';
 import { 
   ChevronRight, 
   Edit, 
@@ -18,31 +16,14 @@ import {
   Users, 
   Filter
 } from 'lucide-react';
-import { fetchMetaTemplates } from '@/store/features/templateSlice'; // Import the action
-const CampaignContainer = () => {
-  const dispatch = useDispatch();
-  const { metaTemplates, loading, error } = useSelector(state => state.templates);
 
+const CampaignContainer = () => {
   const [view, setView] = useState('list'); // 'list', 'create', 'stats', 'preview'
   const [selectedCampaign, setSelectedCampaign] = useState(null);
   const [campaignStatus, setCampaignStatus] = useState('all'); // 'all', 'active', 'scheduled', 'draft', 'completed'
   const [customerSelectionMode, setCustomerSelectionMode] = useState(''); // '', 'single', 'bulk'
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
-
-
- // Dispatching the action to fetch templates when the component mounts
- useEffect(() => {
-  // Only fetch templates if they are not already loaded
-  if (metaTemplates.length === 0) {
-    dispatch(fetchMetaTemplates());
-  } else {
-    console.log(metaTemplates); // If templates are already in the state, log them
-  }
-}, [dispatch, metaTemplates]);
-
-
-
-
+  
   // Sample campaigns data
   const [campaigns, setCampaigns] = useState([
     {
@@ -104,7 +85,12 @@ const CampaignContainer = () => {
   ]);
 
   // Sample templates
-  const templates = metaTemplates;
+  const templates = [
+    { id: "template1", name: "Promotional Offer", preview: "Get 20% off on your next purchase!" },
+    { id: "template2", name: "Product Announcement", preview: "Check out our new product line!" },
+    { id: "template3", name: "Event Invitation", preview: "You're invited to our exclusive event!" },
+    { id: "template4", name: "Seasonal Greetings", preview: "Happy holidays from our team!" }
+  ];
 
   // Sample customer lists
   const customerLists = [

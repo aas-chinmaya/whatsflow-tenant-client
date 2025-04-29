@@ -6,7 +6,7 @@ import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 import * as XLSX from 'xlsx';
 
-const API_URL = "http://192.168.0.109:8000/api/customers";
+const API_URL = "http://192.168.0.123:8000/api/customers";
 
 const CustomerContainer = () => {
   const [loading, setLoading] = useState(false);

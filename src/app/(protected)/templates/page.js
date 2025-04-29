@@ -1,7 +1,9 @@
 
+
+
 'use client'
-import { useState, useEffect } from 'react';
-import axios from 'axios';
+import { useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import { 
   Plus,
   Search,
@@ -13,61 +15,35 @@ import {
   Eye,
   Loader
 } from 'lucide-react';
+import { 
+  fetchMetaTemplates, 
+  setSearchTerm, 
+  setFilters, 
+  clearFilters, 
+  setSelectedTemplate 
+} from '@/store/features/templateSlice';
 
 const TemplateList = () => {
-  const [metaTemplates, setMetaTemplates] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filters, setFilters] = useState({
-    status: 'all',
-    type: 'all',
-    language: 'all'
-  });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [selectedTemplate, setSelectedTemplate] = useState(null);
-  const [languages, setLanguages] = useState([]);
+  const dispatch = useDispatch();
+  const { 
+    metaTemplates, 
+    searchTerm, 
+    filters, 
+    loading, 
+    error, 
+    selectedTemplate, 
+    languages 
+  } = useSelector(state => state.templates);
 
   useEffect(() => {
-    const fetchMetaTemplates = async () => {
-      setLoading(true);
-      try {
-        const response = await axios.get('https://graph.facebook.com/v18.0/619408917542721/message_templates', {
-          headers: {
-            Authorization: 'Bearer EAA4YU5sRk5QBO86fFZA0M6RMu7Mw35eAlm4PtxlO2haED4icRyyEneUeYsLF3FZCqveHYRRZBTN08DV4zeSZB5RrPmYs5ZA3ZCzCxBuQEDM5lKFPOAzpyE2uuZA82hGVGsOzRxJapMVSfmYQeiJ0T2lNGVwxNdDbINgHpCZBk2HgGxYCY5nRwIBiXTQXaPdE9JTor3sVmQrEj8TpP3CuM9ZBqfKz0KKtlfffe44JHxeya'
-          }
-        });
-        
-        const templatesData = response.data.data;
-        setMetaTemplates(templatesData);
-        
-        // Extract unique languages for filter dropdown
-        const uniqueLanguages = [...new Set(templatesData.map(template => template.language))];
-        setLanguages(uniqueLanguages);
-        
-        setLoading(false);
-      } catch (error) {
-        console.error('Error fetching Meta templates:', error);
-        setError('Failed to load templates. Please try again later.');
-        setLoading(false);
-      }
-    };
+    dispatch(fetchMetaTemplates());
+  }, [dispatch]);
 
-    fetchMetaTemplates();
-  }, []);
-
-  // Filter templates based on search term and filters
   const filteredTemplates = metaTemplates.filter(template => {
     const matchesSearch = template.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filters.status === 'all' || template.status.toLowerCase() === filters.status.toLowerCase();
-    
-    // Handle type filtering based on component type
-    const matchesType = filters.type === 'all' || 
-      (template.components && template.components.some(component => 
-        component.type && component.type.toLowerCase() === filters.type.toLowerCase()
-      ));
-    
-    const matchesLanguage = filters.language === 'all' || 
-      (template.language && template.language.toLowerCase() === filters.language.toLowerCase());
+    const matchesType = filters.type === 'all' || template.components?.some(comp => comp.type?.toLowerCase() === filters.type.toLowerCase());
+    const matchesLanguage = filters.language === 'all' || template.language?.toLowerCase() === filters.language.toLowerCase();
     
     return matchesSearch && matchesStatus && matchesType && matchesLanguage;
   });
@@ -77,24 +53,16 @@ const TemplateList = () => {
       return <FileText size={18} />;
     }
 
-    // Check component types
-    const hasMedia = template.components.some(comp => comp.type === 'MEDIA');
-    const hasVideo = template.components.some(comp => 
-      comp.type === 'MEDIA' && comp.parameters && 
-      comp.parameters.some(param => param.type === 'VIDEO')
-    );
-    const hasImage = template.components.some(comp => 
-      comp.type === 'MEDIA' && comp.parameters && 
-      comp.parameters.some(param => param.type === 'IMAGE')
-    );
+    const hasVideo = template.components.some(comp => comp.type === 'MEDIA' && comp.parameters?.some(param => param.type === 'VIDEO'));
+    const hasImage = template.components.some(comp => comp.type === 'MEDIA' && comp.parameters?.some(param => param.type === 'IMAGE'));
 
     if (hasVideo) return <Video size={18} />;
-    if (hasImage || hasMedia) return <Image size={18} />;
+    if (hasImage) return <Image size={18} />;
     return <FileText size={18} />;
   };
 
   const getStatusClass = (status) => {
-    switch(status?.toLowerCase()) {
+    switch (status?.toLowerCase()) {
       case 'approved':
         return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
       case 'rejected':
@@ -107,33 +75,7 @@ const TemplateList = () => {
   };
 
   const handleTemplateClick = (template) => {
-    setSelectedTemplate(selectedTemplate?.id === template.id ? null : template);
-  };
-
-  const clearFilters = () => {
-    setSearchTerm('');
-    setFilters({
-      status: 'all',
-      type: 'all',
-      language: 'all'
-    });
-  };
-
-  const getTemplatePreview = (template) => {
-    if (!template.components || template.components.length === 0) return 'No preview available';
-    
-    // Find a text component
-    const textComponent = template.components.find(comp => 
-      comp.type === 'BODY' || (comp.text && comp.text.length > 0)
-    );
-    
-    if (textComponent && textComponent.text) {
-      return textComponent.text.length > 50 
-        ? `${textComponent.text.substring(0, 50)}...` 
-        : textComponent.text;
-    }
-    
-    return 'No text preview available';
+    dispatch(setSelectedTemplate(template));
   };
 
   return (
@@ -155,14 +97,14 @@ const TemplateList = () => {
               type="text"
               placeholder="Search templates..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => dispatch(setSearchTerm(e.target.value))}
               className="w-full pl-10 pr-4 py-2 rounded-lg border dark:border-gray-700 dark:bg-gray-800"
             />
             <Search className="absolute left-3 top-2.5 text-gray-400" size={20} />
           </div>
           <select
             value={filters.status}
-            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+            onChange={(e) => dispatch(setFilters({ status: e.target.value }))}
             className="px-3 py-2 rounded-lg border dark:border-gray-700 dark:bg-gray-800"
           >
             <option value="all">All Status</option>
@@ -172,7 +114,7 @@ const TemplateList = () => {
           </select>
           <select
             value={filters.type}
-            onChange={(e) => setFilters({ ...filters, type: e.target.value })}
+            onChange={(e) => dispatch(setFilters({ type: e.target.value }))}
             className="px-3 py-2 rounded-lg border dark:border-gray-700 dark:bg-gray-800"
           >
             <option value="all">All Types</option>
@@ -184,7 +126,7 @@ const TemplateList = () => {
           </select>
           <select
             value={filters.language}
-            onChange={(e) => setFilters({ ...filters, language: e.target.value })}
+            onChange={(e) => dispatch(setFilters({ language: e.target.value }))}
             className="px-3 py-2 rounded-lg border dark:border-gray-700 dark:bg-gray-800"
           >
             <option value="all">All Languages</option>
@@ -193,10 +135,10 @@ const TemplateList = () => {
             ))}
           </select>
         </div>
-        
+
         <div className="mt-4 flex justify-between items-center">
           <button 
-            onClick={clearFilters}
+            onClick={() => dispatch(clearFilters())}
             className="text-blue-600 hover:text-blue-800 text-sm"
           >
             Clear Filters
@@ -222,55 +164,26 @@ const TemplateList = () => {
           </div>
         ) : filteredTemplates.length === 0 ? (
           <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-6 rounded-lg text-center">
-            <p className="text-gray-500 dark:text-gray-400">No templates found matching your criteria</p>
-            <button 
-              onClick={clearFilters}
-              className="mt-2 text-blue-600 hover:underline"
-            >
-              Clear filters
-            </button>
+            <p className="text-gray-600 dark:text-gray-400">No templates found</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredTemplates.map((template) => (
-              <div
+          <ul className="space-y-4">
+            {filteredTemplates.map(template => (
+              <li
                 key={template.id}
-                className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 space-y-3 cursor-pointer transition-all hover:shadow-md ${selectedTemplate?.id === template.id ? 'ring-2 ring-blue-500' : ''}`}
                 onClick={() => handleTemplateClick(template)}
+                className={`flex justify-between items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 ${selectedTemplate?.id === template.id ? 'bg-gray-100 dark:bg-gray-700' : ''}`}
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    {getTemplateTypeIcon(template)}
-                    <h3 className="font-medium text-lg ml-2">{template.name}</h3>
-                  </div>
-                  <span className={`px-2 py-1 text-xs rounded-full ${getStatusClass(template.status)}`}>
-                    {template.status || 'Unknown'}
-                  </span>
+                <div className="flex items-center space-x-3">
+                  {getTemplateTypeIcon(template)}
+                  <span className="text-lg font-semibold">{template.name}</span>
                 </div>
-                <div className="text-sm text-gray-500 dark:text-gray-400 space-y-2">
-                  <p>Language: {template.language || 'N/A'}</p>
-                  <p className="truncate">Preview: {getTemplatePreview(template)}</p>
-                  <p>Category: {template.category || 'N/A'}</p>
-                </div>
-                
-                {selectedTemplate?.id === template.id && (
-                  <div className="pt-3 border-t border-gray-100 dark:border-gray-700 mt-3 flex justify-between">
-                    <div className="flex space-x-2">
-                      <button className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-gray-700 rounded-full">
-                        <Edit size={16} />
-                      </button>
-                      <button className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-gray-700 rounded-full">
-                        <Eye size={16} />
-                      </button>
-                    </div>
-                    <button className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-gray-700 rounded-full">
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                )}
-              </div>
+                <span className={`text-sm font-semibold ${getStatusClass(template.status)}`}>
+                  {template.status}
+                </span>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </div>
     </div>

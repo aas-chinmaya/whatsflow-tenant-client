@@ -1,60 +1,52 @@
 // AgentDashboard.jsx
 "use client"
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { 
   UserPlus, Edit, Trash2, Eye, ChevronDown, Search, 
   UserCheck, UserX, BarChart2, Activity, Award, Users
 } from 'lucide-react';
+import { 
+  fetchAgents, 
+  createAgent as createAgentAction, 
+  updateAgent as updateAgentAction, 
+  deleteAgent as deleteAgentAction,
+  clearAgentMessages
+} from '@/store/features/agentSlice';
 
 const AgentContainer = () => {
-  // Sample agent data
-  const [agents, setAgents] = useState([
-    { 
-      id: 'AGT-001', 
-      name: 'John Doe', 
-      email: 'john.doe@example.com',
-      phone: '(555) 123-4567',
-      department: 'Sales',
-      status: 'active',
-      joinDate: '2023-05-15',
-      performance: 87,
-      casesHandled: 124
-    },
-    { 
-      id: 'AGT-002', 
-      name: 'Jane Smith', 
-      email: 'jane.smith@example.com',
-      phone: '(555) 987-6543',
-      department: 'Support',
-      status: 'inactive',
-      joinDate: '2023-08-22',
-      performance: 92,
-      casesHandled: 98
-    },
-    { 
-      id: 'AGT-003', 
-      name: 'Robert Johnson', 
-      email: 'robert.j@example.com',
-      phone: '(555) 456-7890',
-      department: 'Technical',
-      status: 'active',
-      joinDate: '2024-01-10',
-      performance: 76,
-      casesHandled: 67
-    }
-  ]);
+  const dispatch = useDispatch();
+  const { agents, loading, error, successMessage } = useSelector((state) => state.agent);
+  
+  // Fetch agents on component mount
+  useEffect(() => {
+    dispatch(fetchAgents());
+  }, [dispatch]);
+  
+  // Clear messages when unmounting or when needed
+  useEffect(() => {
+    return () => {
+      dispatch(clearAgentMessages());
+    };
+  }, [dispatch]);
+  
+  // We no longer need localAgents as we're using data from Redux store
   
   // State for current view and selected agent
   const [currentView, setCurrentView] = useState('list'); // 'list', 'view', 'create', 'edit'
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   
+  // Get user data from auth state to access tenantReferenceId
+  const { user } = useSelector((state) => state.auth);
+  
   // Form state for create/edit
   const [formData, setFormData] = useState({
-    name: '',
+    agentName: '',
     email: '',
     phone: '',
-    department: '',
+    gender: 'male',
+    tenantReferenceId: user?.id || ''
   });
   
   // Handle form input changes
@@ -68,82 +60,96 @@ const AgentContainer = () => {
   
   // Toggle agent status (active/inactive)
   const toggleAgentStatus = (id) => {
-    setAgents(agents.map(agent => {
-      if (agent.id === id) {
-        return {
-          ...agent,
-          status: agent.status === 'active' ? 'inactive' : 'active'
-        };
-      }
-      return agent;
-    }));
+    const agent = agents.find(agent => agent._id === id);
+    if (agent) {
+      const updatedData = {
+        ...agent,
+        isDeleted: agent.isDeleted === false ? true : false,
+        tenantReferenceId: user?.id || '', // Add tenant reference ID from user data
+        purpose: 'status_update' // Add purpose for tracking operation type
+      };
+      dispatch(updateAgentAction({ agentId: id, updatedData }));
+    }
   };
   
   // Delete an agent
   const deleteAgent = (id) => {
-    setAgents(agents.filter(agent => agent.id !== id));
+    dispatch(deleteAgentAction(id));
   };
   
   // View agent details
   const viewAgent = (id) => {
-    setSelectedAgent(agents.find(agent => agent.id === id));
+    setSelectedAgent(agents.find(agent => agent._id === id));
     setCurrentView('view');
   };
   
   // Edit an agent
   const editAgent = (id) => {
-    const agent = agents.find(agent => agent.id === id);
+    const agent = agents.find(agent => agent._id === id);
     setSelectedAgent(agent);
     setFormData({
-      name: agent.name,
+      agentName: agent.agentName,
       email: agent.email,
       phone: agent.phone,
-      department: agent.department
+      gender: agent.gender,
+      tenantReferenceId: agent.tenantReferenceId
     });
     setCurrentView('edit');
   };
   
   // Create new agent
   const createAgent = () => {
+    if (!formData.agentName || !formData.email || !formData.phone || !formData.gender || !formData.tenantReferenceId) {
+      dispatch({ type: 'agent/error', payload: 'All fields are required' });
+      return;
+    }
+    
     const newAgent = {
-      ...formData,
-      id: `AGT-${String(agents.length + 1).padStart(3, '0')}`,
+      agentName: formData.agentName,
+      email: formData.email,
+      phone: formData.phone,
+      gender: formData.gender,
       status: 'active',
       joinDate: new Date().toISOString().split('T')[0],
       performance: 0,
-      casesHandled: 0
+      casesHandled: 0,
+      tenantReferenceId: formData.tenantReferenceId,
+      purpose: 'create'
     };
     
-    setAgents([...agents, newAgent]);
+    dispatch(createAgentAction(newAgent));
     setCurrentView('list');
     setFormData({
-      name: '',
+      agentName: '',
       email: '',
       phone: '',
-      department: ''
+      gender: '',
+      tenantReferenceId: user?.id || ''
     });
   };
   
   // Update existing agent
   const updateAgent = () => {
-    setAgents(agents.map(agent => {
-      if (agent.id === selectedAgent.id) {
-        return {
-          ...agent,
-          ...formData
-        };
-      }
-      return agent;
-    }));
+    const updatedData = {
+      ...selectedAgent,
+      agentName: formData.agentName,
+      email: formData.email,
+      phone: formData.phone,
+      gender: formData.gender,
+      tenantReferenceId: user?.id || '',
+      purpose: 'update'
+    };
+    
+    dispatch(updateAgentAction({ agentId: selectedAgent._id, updatedData }));
     setCurrentView('list');
   };
   
   // Filtered agents based on search term
-  const filteredAgents = agents.filter(agent => 
-    agent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    agent.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    agent.id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredAgents = agents ? agents.filter(agent => 
+    (agent.agentName && agent.agentName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (agent.email && agent.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (agent.agentId && agent.agentId.toString().toLowerCase().includes(searchTerm.toLowerCase()))
+  ) : [];
 
   // Generate performance data for charts (sample data)
   const generatePerformanceData = (agent) => {
@@ -170,8 +176,8 @@ const AgentContainer = () => {
             <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
             <input
               type="text"
-              name="name"
-              value={formData.name}
+              name="agentName"
+              value={formData.agentName}
               onChange={handleInputChange}
               className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Full Name"
@@ -199,24 +205,28 @@ const AgentContainer = () => {
               onChange={handleInputChange}
               className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Phone Number"
+              pattern="[+]?[0-9]{10,15}"
+              title="Phone number must be 10-15 digits with optional + prefix"
             />
           </div>
           
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
             <select
-              name="department"
-              value={formData.department}
+              name="gender"
+              value={formData.gender}
               onChange={handleInputChange}
               className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
             >
-              <option value="">Select Department</option>
-              <option value="Sales">Sales</option>
-              <option value="Support">Support</option>
-              <option value="Technical">Technical</option>
-              <option value="Admin">Admin</option>
+              <option value="">Select Gender</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
             </select>
           </div>
+          
+
         </div>
         
         <div className="flex justify-end space-x-4 mt-6">
@@ -248,7 +258,7 @@ const AgentContainer = () => {
       <div className="bg-white rounded-lg shadow-md w-full">
         <div className="p-6 border-b">
           <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-bold">{selectedAgent.name}</h2>
+            <h2 className="text-2xl font-bold">{selectedAgent.agentName}</h2>
             <button
               onClick={() => setCurrentView('list')}
               className="px-3 py-1 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors text-sm"
@@ -258,8 +268,8 @@ const AgentContainer = () => {
           </div>
           
           <div className="flex items-center mt-2">
-            <span className={`inline-block w-3 h-3 rounded-full mr-2 ${selectedAgent.status === 'active' ? 'bg-green-500' : 'bg-red-500'}`}></span>
-            <span className="text-gray-600 capitalize">{selectedAgent.status}</span>
+            <span className={`inline-block w-3 h-3 rounded-full mr-2 ${selectedAgent.isDeleted === false ? 'bg-green-500' : 'bg-red-500'}`}></span>
+            <span className="text-gray-600 capitalize">{selectedAgent.isDeleted === false ? 'Active' : 'Inactive'}</span>
           </div>
         </div>
         
@@ -271,7 +281,7 @@ const AgentContainer = () => {
               <div className="grid grid-cols-1 gap-4">
                 <div>
                   <p className="text-sm text-gray-500">Agent ID</p>
-                  <p className="font-medium">{selectedAgent.id}</p>
+                  <p className="font-medium">{selectedAgent.agentId}</p>
                 </div>
                 
                 <div>
@@ -284,10 +294,7 @@ const AgentContainer = () => {
                   <p className="font-medium">{selectedAgent.phone}</p>
                 </div>
                 
-                <div>
-                  <p className="text-sm text-gray-500">Department</p>
-                  <p className="font-medium">{selectedAgent.department}</p>
-                </div>
+
                 
                 <div>
                   <p className="text-sm text-gray-500">Join Date</p>
@@ -378,6 +385,25 @@ const AgentContainer = () => {
   // Main render method
   return (
     <div className="min-h-screen bg-gray-50 p-4">
+      {/* Display error or success messages */}
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {typeof error === 'string' ? error : 'An error occurred'}
+        </div>
+      )}
+      
+      {successMessage && (
+        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+          {successMessage}
+        </div>
+      )}
+      
+      {/* Loading indicator */}
+      {loading && (
+        <div className="flex justify-center items-center mb-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-700"></div>
+        </div>
+      )}
       {currentView === 'list' && (
         <div className="container mx-auto">
           <div className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -400,9 +426,11 @@ const AgentContainer = () => {
                   <button
                     onClick={() => {
                       setFormData({
-                        name: '',
+                        agentName: '',
                         email: '',
                         phone: '',
+                        gender: 'male',
+                        tenantReferenceId: user?.id || '',
                         department: ''
                       });
                       setCurrentView('create');
@@ -429,9 +457,7 @@ const AgentContainer = () => {
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Email
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Department
-                    </th>
+
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
@@ -444,35 +470,33 @@ const AgentContainer = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredAgents.length > 0 ? (
                     filteredAgents.map(agent => (
-                      <tr key={agent.id} className="hover:bg-gray-50">
+                      <tr key={agent._id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm font-medium text-gray-900">{agent.id}</span>
+                          <span className="text-sm font-medium text-gray-900">{agent.agentId}</span>
                         </td>
                         
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm text-gray-900">{agent.name}</span>
+                          <span className="text-sm text-gray-900">{agent.agentName}</span>
                         </td>
                         
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-sm text-gray-500">{agent.email}</span>
                         </td>
                         
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm text-gray-500">{agent.department}</span>
-                        </td>
+
                         
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            agent.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                            agent.isDeleted === false ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                           }`}>
-                            {agent.status}
+                            {agent.isDeleted === false ? 'Active' : 'Inactive'}
                           </span>
                         </td>
                         
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
                             <button 
-                              onClick={() => viewAgent(agent.id)}
+                              onClick={() => viewAgent(agent._id)}
                               className="text-blue-600 hover:text-blue-900"
                               title="View Details"
                             >
@@ -480,25 +504,17 @@ const AgentContainer = () => {
                             </button>
                             
                             <button 
-                              onClick={() => editAgent(agent.id)}
+                              onClick={() => editAgent(agent._id)}
                               className="text-yellow-600 hover:text-yellow-900"
                               title="Edit Agent"
                             >
                               <Edit className="w-5 h-5" />
                             </button>
                             
-                            <button 
-                              onClick={() => toggleAgentStatus(agent.id)}
-                              className={`${
-                                agent.status === 'active' ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'
-                              }`}
-                              title={agent.status === 'active' ? 'Deactivate Agent' : 'Activate Agent'}
-                            >
-                              {agent.status === 'active' ? <UserX className="w-5 h-5" /> : <UserCheck className="w-5 h-5" />}
-                            </button>
+                            
                             
                             <button 
-                              onClick={() => deleteAgent(agent.id)}
+                              onClick={() => deleteAgent(agent._id)}
                               className="text-red-600 hover:text-red-900"
                               title="Delete Agent"
                             >

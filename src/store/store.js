@@ -1,18 +1,23 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { combineReducers } from 'redux';
 import authReducer from './features/authSlice';
-// import userReducer from './slices/userSlice';
-// import templateReducer from './slices/templateSlice';
+import agentReducer from './features/agentSlice';
+import campaignReducer from './features/campaignSlice';
 import notificationReducer from './features/notificationSlice';
+
+import customerReducer from './features/customerSlice';
+import templateReducer from './features/templateSlice';
+
 // import messageReducer from './slices/messageSlice';
-// import customerReducer from './slices/customerSlice';
 const rootReducer = combineReducers({
   auth: authReducer,
-//   users: userReducer,
-//   customers: customerReducer,
-//   templates: templateReducer,
+  agent: agentReducer,
+  campaign: campaignReducer,
   notifications: notificationReducer,
-// message: messageReducer,
+  templates: templateReducer,
+  customers: customerReducer,
+  template: templateReducer,
+ 
 });
 
 const store = configureStore({
