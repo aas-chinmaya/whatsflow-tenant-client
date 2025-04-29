@@ -1,28 +1,22 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
 import { UserPlus, Edit, Trash2, ShieldCheck, Upload, X, Check } from "lucide-react";
+import axios from "axios";
 import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 import * as XLSX from 'xlsx';
-import { 
-  fetchCustomers, 
-  addCustomer, 
-  updateCustomer, 
-  deleteCustomer, 
-  bulkUploadCustomers,
-  setSelectedCustomers,
-  clearSelectedCustomers 
-} from "@/store/features/customerSlice";
+
+const API_URL = "http://192.168.0.123:8000/api/customers";
 
 const CustomerContainer = () => {
-  const dispatch = useDispatch();
-  const { customers, loading, selectedCustomers } = useSelector((state) => state.customers);
-  const [loadingCustomerId, setLoadingCustomerId] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [customers, setCustomers] = useState([]);
+  const [selectedCustomers, setSelectedCustomers] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [addMethod, setAddMethod] = useState('single');
   const [file, setFile] = useState(null);
+  const [loadingCustomerId, setLoadingCustomerId] = useState(null);
   
   const [formData, setFormData] = useState({
     firstName: "",
@@ -42,12 +36,17 @@ const CustomerContainer = () => {
 
   // Fetch customers
   useEffect(() => {
-    dispatch(fetchCustomers())
-      .unwrap()
-      .catch((error) => {
-        toast.error("Error fetching customers: " + error);
-      });
-  }, [dispatch]);
+    fetchCustomers();
+  }, []);
+
+  const fetchCustomers = async () => {
+    try {
+      const { data } = await axios.get(`${API_URL}/getall`);
+      setCustomers(data);
+    } catch (error) {
+      toast.error("Error fetching customers: " + error.message);
+    }
+  };
 
   // Add or Update Customer
   const handleAddOrUpdateCustomer = async () => {
@@ -62,22 +61,28 @@ const CustomerContainer = () => {
     }
 
     const phoneWithCode = formData.countryCode + formData.phone;
-    const customerData = { ...formData, phone: phoneWithCode };
 
     try {
+      const customerData = { ...formData, phone: phoneWithCode };
+
       if (editingCustomer) {
-        await dispatch(updateCustomer({ 
-          customerId: editingCustomer.customerId, 
-          customerData 
-        })).unwrap();
+        await axios.put(
+          `${API_URL}/updatecustomer/${editingCustomer.customerId}`,
+          customerData
+        );
         toast.success("Customer updated successfully!");
       } else {
-        await dispatch(addCustomer(customerData)).unwrap();
+        await axios.post(`${API_URL}/create`, customerData);
         toast.success("Customer added successfully!");
       }
+
+      fetchCustomers();
       closeModal();
     } catch (error) {
-      toast.error("Error saving customer: " + error);
+      toast.error(
+        "Error saving customer: " + error.response?.data?.message ||
+          error.message
+      );
     }
   };
 
@@ -112,10 +117,11 @@ const CustomerContainer = () => {
   // Delete Customer (Soft Delete)
   const handleDeleteCustomer = async (id) => {
     try {
-      await dispatch(deleteCustomer(id)).unwrap();
+      await axios.delete(`${API_URL}/deletecustomer/${id}`);
+      fetchCustomers();
       toast.success("Customer deleted successfully!");
     } catch (error) {
-      toast.error("Error deleting customer: " + error);
+      toast.error("Error deleting customer: " + error.message);
     }
   };
 
@@ -124,7 +130,7 @@ const CustomerContainer = () => {
     for (const id of selectedCustomers) {
       await handleDeleteCustomer(id);
     }
-    dispatch(clearSelectedCustomers());
+    setSelectedCustomers([]);
   };
 
   // Close Modal
@@ -150,15 +156,25 @@ const CustomerContainer = () => {
     }
 
     try {
+      setLoading(true);
       const formData = new FormData();
       formData.append('file', file);
 
-      await dispatch(bulkUploadCustomers(formData)).unwrap();
+      const { data } = await axios.post(`${API_URL}/bulk-upload`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
       toast.success('Bulk upload completed!');
+      fetchCustomers();
       closeModal();
     } catch (error) {
-      console.error('Upload Error Details:', error);
-      toast.error(`Upload failed: ${error}`);
+      console.error('Upload Error Details:', error.response?.data);
+      toast.error(`Upload failed: ${error.response?.data?.message || error.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -198,9 +214,9 @@ const CustomerContainer = () => {
                   className="rounded border-gray-300"
                   checked={selectedCustomers.length === customers.length && customers.length > 0}
                   onChange={() => 
-                    dispatch(setSelectedCustomers(
+                    setSelectedCustomers(
                       selectedCustomers.length === customers.length ? [] : customers.map(c => c.customerId)
-                    ))
+                    )
                   }
                 />
               </th>
@@ -230,10 +246,11 @@ const CustomerContainer = () => {
                     checked={selectedCustomers.includes(customer.customerId)}
                     onChange={(e) => {
                       e.stopPropagation();
-                      const newSelectedCustomers = selectedCustomers.includes(customer.customerId)
-                        ? selectedCustomers.filter((id) => id !== customer.customerId)
-                        : [...selectedCustomers, customer.customerId];
-                      dispatch(setSelectedCustomers(newSelectedCustomers));
+                      setSelectedCustomers((prev) =>
+                        prev.includes(customer.customerId)
+                          ? prev.filter((id) => id !== customer.customerId)
+                          : [...prev, customer.customerId]
+                      );
                     }}
                   />
                 </td>

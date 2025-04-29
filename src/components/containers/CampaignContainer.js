@@ -106,13 +106,31 @@ const CampaignContainer = () => {
   // Sample templates
   const templates = metaTemplates;
 
-  // Sample customer lists
+  // Get customers from Redux store
+  const { customers } = useSelector((state) => state.customers);
+  
+  // Transform customers into customer lists
   const customerLists = [
-    { id: 1, name: "All Customers", count: 5000 },
-    { id: 2, name: "Premium Members", count: 1200 },
-    { id: 3, name: "New Subscribers", count: 850 },
-    { id: 4, name: "Inactive Users", count: 1600 }
+    { id: 'all', name: 'All Customers', count: customers.length },
+    { 
+      id: 'premium', 
+      name: 'Premium Members', 
+      count: customers.filter(c => c.optInStatus).length 
+    },
+    { 
+      id: 'new', 
+      name: 'New Subscribers', 
+      count: customers.filter(c => {
+        const joinDate = new Date(c.createdAt);
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        return joinDate >= thirtyDaysAgo;
+      }).length 
+    }
   ];
+
+  // Selected customer list state
+  const [selectedCustomerList, setSelectedCustomerList] = useState(null);
 
   const handleCampaignClick = (campaign) => {
     setSelectedCampaign(campaign);
@@ -489,7 +507,13 @@ const CampaignContainer = () => {
                       <h4 className="font-medium">{list.name}</h4>
                       <p className="text-sm text-gray-500">{list.count} customers</p>
                     </div>
-                    <input type="radio" name="customerList" className="h-4 w-4 text-blue-600" />
+                    <input 
+                      type="radio" 
+                      name="customerList" 
+                      className="h-4 w-4 text-blue-600"
+                      checked={selectedCustomerList === list.id}
+                      onChange={() => setSelectedCustomerList(list.id)}
+                    />
                   </div>
                 ))}
               </div>
